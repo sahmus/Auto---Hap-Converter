@@ -33,6 +33,7 @@ class HapBatchConverterApp:
         self.output_dir = tk.StringVar()
         self.high_quality = tk.BooleanVar(value=True)
         self.include_audio = tk.BooleanVar(value=False)
+        self.overwrite_existing = tk.BooleanVar(value=True)
         self.status_text = tk.StringVar(value="Ready.")
 
         self._configure_style()
@@ -77,6 +78,13 @@ class HapBatchConverterApp:
             options,
             text="Include audio (PCM, slower)",
             variable=self.include_audio,
+            style="Option.TCheckbutton",
+        ).pack(anchor="w", pady=4)
+
+        ttk.Checkbutton(
+            options,
+            text="Overwrite existing output files",
+            variable=self.overwrite_existing,
             style="Option.TCheckbutton",
         ).pack(anchor="w", pady=4)
 
@@ -173,14 +181,17 @@ class HapBatchConverterApp:
         self._set_status(f"Converting {total} file(s)...")
         self._log(f"Using HAP format: {hap_format}")
         self._log("Video settings: pix_fmt=rgba, chunks=4, compressor=snappy")
+        self._log("Resolution handling: pad to nearest multiple of 4 for HAP compatibility")
         self._log(f"Include audio (PCM): {'yes' if self.include_audio.get() else 'no'}")
+        self._log(f"Existing output handling: {'overwrite' if self.overwrite_existing.get() else 'skip'}")
 
         succeeded = 0
+        skipped = 0
         for index, video_path in enumerate(videos, start=1):
             out_path = output / f"{video_path.stem}_hap.mov"
             cmd = [
                 "ffmpeg",
-                "-y",
+                "-y" if self.overwrite_existing.get() else "-n",
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -196,6 +207,8 @@ class HapBatchConverterApp:
                 "snappy",
                 "-pix_fmt",
                 "rgba",
+                "-vf",
+                "pad=ceil(iw/4)*4:ceil(ih/4)*4",
             ]
             if self.include_audio.get():
                 cmd.extend(["-c:a", "pcm_s16le"])
@@ -203,6 +216,13 @@ class HapBatchConverterApp:
                 cmd.append("-an")
 
             cmd.append(str(out_path))
+
+            if out_path.exists() and not self.overwrite_existing.get():
+                skipped += 1
+                self._log(f"[{index}/{total}] Skipping existing file: {out_path.name}")
+                self.progress["value"] = int((index / total) * 100)
+                self.root.update_idletasks()
+                continue
 
             self._log(f"[{index}/{total}] Converting: {video_path.name}")
             result = subprocess.run(cmd, capture_output=True, text=True)
@@ -218,8 +238,10 @@ class HapBatchConverterApp:
             self.progress["value"] = int((index / total) * 100)
             self.root.update_idletasks()
 
-        self._set_status(f"Done. {succeeded}/{total} file(s) converted.")
-        self._log("Conversion finished.")
+        self._set_status(
+            f"Done. {succeeded}/{total} file(s) converted, {skipped} skipped."
+        )
+        self._log(f"Conversion finished. Converted: {succeeded}, skipped: {skipped}.")
         self.convert_button.config(state="normal")
 
 

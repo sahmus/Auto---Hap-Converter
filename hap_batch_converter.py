@@ -33,7 +33,7 @@ class HapBatchConverterApp:
         self.output_dir = tk.StringVar()
         self.high_quality = tk.BooleanVar(value=True)
         self.include_audio = tk.BooleanVar(value=False)
-        self.overwrite_existing = tk.BooleanVar(value=True)
+        self.skip_existing = tk.BooleanVar(value=True)
         self.status_text = tk.StringVar(value="Ready.")
 
         self._configure_style()
@@ -83,8 +83,8 @@ class HapBatchConverterApp:
 
         ttk.Checkbutton(
             options,
-            text="Overwrite existing output files",
-            variable=self.overwrite_existing,
+            text="Skip files already in output folder",
+            variable=self.skip_existing,
             style="Option.TCheckbutton",
         ).pack(anchor="w", pady=4)
 
@@ -183,7 +183,7 @@ class HapBatchConverterApp:
         self._log("Video settings: pix_fmt=rgba, chunks=4, compressor=snappy")
         self._log("Resolution handling: pad to nearest multiple of 4 for HAP compatibility")
         self._log(f"Include audio (PCM): {'yes' if self.include_audio.get() else 'no'}")
-        self._log(f"Existing output handling: {'overwrite' if self.overwrite_existing.get() else 'skip'}")
+        self._log(f"Existing output handling: {'skip existing' if self.skip_existing.get() else 'overwrite'}")
 
         succeeded = 0
         skipped = 0
@@ -191,7 +191,7 @@ class HapBatchConverterApp:
             out_path = output / f"{video_path.stem}_hap.mov"
             cmd = [
                 "ffmpeg",
-                "-y" if self.overwrite_existing.get() else "-n",
+                "-n" if self.skip_existing.get() else "-y",
                 "-hide_banner",
                 "-loglevel",
                 "error",
@@ -217,7 +217,7 @@ class HapBatchConverterApp:
 
             cmd.append(str(out_path))
 
-            if out_path.exists() and not self.overwrite_existing.get():
+            if out_path.exists() and self.skip_existing.get():
                 skipped += 1
                 self._log(f"[{index}/{total}] Skipping existing file: {out_path.name}")
                 self.progress["value"] = int((index / total) * 100)

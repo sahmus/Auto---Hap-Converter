@@ -6,7 +6,8 @@ A Python desktop app (Tkinter) for converting every video in a folder to the HAP
 
 - Batch conversion from one folder to another
 - Option to use **high-quality HAP** (`hap_q`)
-- Option to **mute audio** on output clips (`-an`)
+- Output tuned for TouchDesigner compatibility (`rgba`, `snappy`, `chunks=4`)
+- Optional audio as uncompressed PCM (disabled by default for faster conversion)
 - Live conversion log and progress bar
 
 ## Requirements
@@ -24,7 +25,7 @@ python hap_batch_converter.py
 2. Choose an output folder.
 3. Toggle:
    - **Use high quality HAP (hap_q)**
-   - **Mute audio on output clips**
+   - **Include audio (PCM, slower)**
 4. Click **Convert Folder**.
 
 Supported input extensions:

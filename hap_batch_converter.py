@@ -32,7 +32,7 @@ class HapBatchConverterApp:
         self.source_dir = tk.StringVar()
         self.output_dir = tk.StringVar()
         self.high_quality = tk.BooleanVar(value=True)
-        self.mute_audio = tk.BooleanVar(value=False)
+        self.include_audio = tk.BooleanVar(value=False)
         self.status_text = tk.StringVar(value="Ready.")
 
         self._configure_style()
@@ -75,8 +75,8 @@ class HapBatchConverterApp:
 
         ttk.Checkbutton(
             options,
-            text="Mute audio on output clips",
-            variable=self.mute_audio,
+            text="Include audio (PCM, slower)",
+            variable=self.include_audio,
             style="Option.TCheckbutton",
         ).pack(anchor="w", pady=4)
 
@@ -172,7 +172,8 @@ class HapBatchConverterApp:
 
         self._set_status(f"Converting {total} file(s)...")
         self._log(f"Using HAP format: {hap_format}")
-        self._log(f"Mute audio: {'yes' if self.mute_audio.get() else 'no'}")
+        self._log("Video settings: pix_fmt=rgba, chunks=4, compressor=snappy")
+        self._log(f"Include audio (PCM): {'yes' if self.include_audio.get() else 'no'}")
 
         succeeded = 0
         for index, video_path in enumerate(videos, start=1):
@@ -180,17 +181,26 @@ class HapBatchConverterApp:
             cmd = [
                 "ffmpeg",
                 "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
                 "-i",
                 str(video_path),
                 "-c:v",
                 "hap",
                 "-format",
                 hap_format,
+                "-chunks",
+                "4",
+                "-compressor",
+                "snappy",
+                "-pix_fmt",
+                "rgba",
             ]
-            if self.mute_audio.get():
-                cmd.append("-an")
+            if self.include_audio.get():
+                cmd.extend(["-c:a", "pcm_s16le"])
             else:
-                cmd.extend(["-c:a", "copy"])
+                cmd.append("-an")
 
             cmd.append(str(out_path))
 
